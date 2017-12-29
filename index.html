@@ -5,17 +5,64 @@
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Biased Correlation Demo</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/7.0.0/normalize.min.css" type="text/css">
   <style>
-    svg#canvas {
-      margin: 0 auto;
-      display: block;
+    .page {
+      margin: 20px auto;
+      max-width: 800px;
+      text-align: center;
+    }
+
+    .control label {
+      width: 380px;
+      display: inline-block;
+      text-align: right;
+      margin-bottom: 10px;
+    }
+
+    .control label:first-child {
+      width: 240px;
+    }
+
+    .footer{
+      margin-top: 60px;
+      font-size: 80%;
     }
   </style>
 </head>
 
 <body>
-  <div>
-    <svg id="canvas"></svg>
+  <div class="page">
+    <h3>Demo of Biased Correlation</h3>
+    <div class="control">
+      <div>
+        <label>Population Ratio
+          <input type="number" value="0.5" step="0.01" min="0" max="1" id="ratio">
+        </label>
+        <label>Acceptance Cut
+          <input type="number" value="0.9" step="0.01" min="0" max="1" id="cut1">
+          <input type="number" value="0.9" step="0.01" min="0" max="1" id="cut2" disabled="disabled">
+          <input type="checkbox" checked="checked"> Same
+        </label>
+      </div>
+      <div>
+        <label>Bias
+          <input type="number" value="0" step="0.01" min="0" max="1" id="bias">
+        </label>
+        <label>Correlation
+          <input type="number" value="0.95" step="0.01" min="0" max="1" id="r1">
+          <input type="number" value="0.95" step="0.01" min="0" max="1" id="r2" disabled="disabled">
+          <input type="checkbox" checked="checked"> Same
+        </label>
+      </div>
+    </div>
+    <div>
+      <svg id="canvas"></svg>
+    </div>
+    <div class="footer">
+      Made by <a href="https://yymao.github.io/">Yao-Yuan Mao</a> with <a href="https://d3js.org/">D3.js</a>.
+      Inspired by my research work, "<a href="https://arxiv.org/abs/1705.03888">Beyond Assembly Bias</a>".
+    </div>
   </div>
 
   <script src="https://d3js.org/d3.v4.min.js"></script>
@@ -59,7 +106,7 @@
     const x = d3.scaleLinear().range([0, dims.width]).domain([0, 1]);
     const y = d3.scaleLinear().range([dims.height, 0]).domain([0, 1]);
 
-    const hist_nbins = 40;
+    const hist_nbins = 30;
     const hist = d3.histogram()
       .domain(x.domain())
       .thresholds(d3.range(hist_nbins).map(i => i / hist_nbins))
