@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Biased Correlation Demo</title>
+  <style>
+    svg#canvas {
+      margin: 0 auto;
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  <div>
+    <svg id="canvas"></svg>
+  </div>
+
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <script src="mathfn.js"></script>
+  <script>
+
+    var shuffle_rank;
+    {
+      const _shuffle_rank_f0 = r => { let x = (1.0 - r) / r; return Math.pow(x, 0.37) * (1.0 + Math.pow(x, 0.6)) * 0.25; };
+      const _shuffle_rank_f1 = (x, a) => Math.exp(-Math.pow(x / a, 2)) * a / Math.sqrt(Math.PI) + (mathfn.erf(x / a) * x);
+      const _shuffle_rank_f2 = (x, a) => { let b = a * Math.sqrt(2.0); return (_shuffle_rank_f1(x, b) - _shuffle_rank_f1(x - 1.0, b) + 1.0) / 2.0; };
+      shuffle_rank = (x, r, u) => {
+        if (u == null) u = Math.random();
+        const s = _shuffle_rank_f0(r);
+        return _shuffle_rank_f2(mathfn.invErf(u * 2.0 - 1.0) * s + x, s);
+      };
+    }
+
+    const bias_func = (u, b, invert = false) => {
+      if (b == 0) return u;
+      const a = Math.abs(Math.tan(b * Math.PI / 2.0));
+      if (invert) u = 1.0 - u;
+      if (a <= 1.0) v = (Math.sqrt(4.0 * a * u + a * a - 2.0 * a + 1.0) + a - 1.0) / 2.0 / a;
+      else if (u <= 1.0 / a) v = (Math.sqrt(a * u) * 2.0 + a - 1.0) / 2.0 / a;
+      else v = (u - 1.0 / a) / 2.0 + (a + 1.0) / 2.0 / a;
+      return invert ? 1.0 - v : v;
+    };
+
+    const create_data = (n = 2000) => d3.range(n).map(i => ({ "x": (i + 0.5) / n, "u1": Math.random(), "u2": Math.random() }));
+    const which_group = d => (d.u2 >= params.ratio);
+    const above_cut = d => (d.y >= (which_group(d) ? params.cut1 : params.cut2));
+    const calc_y = d => { d.y = shuffle_rank(d.x, which_group(d) ? params.r1 : params.r2, bias_func(d.u1, params.bias, which_group(d))); };
+
+    const dims = { "margin": { "top": 20, "right": 20, "bottom": 30, "left": 50 }, "width": 600, "height": 550 };
+    const fig = d3.select("svg#canvas")
+      .attr("width", dims.width + dims.margin.left + dims.margin.right)
+      .attr("height", dims.height + dims.margin.top + dims.margin.bottom)
+      .append("g")
+      .attr("transform", "translate(" + dims.margin.left + "," + dims.margin.top + ")");
+
+    const x = d3.scaleLinear().range([0, dims.width]).domain([0, 1]);
+    const y = d3.scaleLinear().range([dims.height, 0]).domain([0, 1]);
+
+    const hist_nbins = 40;
+    const hist = d3.histogram()
+      .domain(x.domain())
+      .thresholds(d3.range(hist_nbins).map(i => i / hist_nbins))
+
+    const make_hist = (group) =>
+      hist(data.filter(d => above_cut(d) && which_group(d) == group).map(d => d.x))
+        .forEach((d, i) => {
+          let b = bins[i + hist_nbins * group];
+          b.x0 = d.x0;
+          b.length = d.length / data.length * hist_nbins;
+          b.group = group;
+        });
+
+    const bins = [];
+    d3.range(hist_nbins * 2).forEach(() => { bins.push({}) });
+
+    const update = () => {
+      data.forEach(calc_y);
+      fig.selectAll("circle")
+        .attr("cy", d => y(d.y))
+        .style("fill", d => which_group(d) ? "darkorange" : "dodgerblue")
+        .style("fill-opacity", d => above_cut(d) ? 0.9 : 0.5);
+
+      make_hist(true);
+      make_hist(false);
+      fig.selectAll(".bar")
+        .attr("transform", d => "translate(" + x(d.x0) + "," + y(d.length) + ")")
+        .attr("height", d => dims.height - y(d.length))
+        .style("fill", d => d.group ? "darkorange" : "dodgerblue");
+    }
+
+    const params = { "bias": 0, "r1": 0.9, "r2": 0.9, "ratio": 0.5, "cut1": 0.9, "cut2": 0.9 };
+    const data = create_data();
+
+    fig.selectAll("circle")
+      .data(data)
+      .enter().append("circle")
+      .attr("r", 3)
+      .attr("cx", d => x(d.x));
+
+    fig.selectAll(".bar")
+      .data(bins)
+      .enter().append("rect")
+      .attr("class", "bar")
+      .attr("x", 1)
+      .attr("width", x(1.0 / hist_nbins) - 1)
+      .style("fill-opacity", 0.5);
+
+    update();
+
+    fig.append("g")
+      .attr("transform", "translate(0," + dims.height + ")")
+      .call(d3.axisBottom(x));
+
+    fig.append("g")
+      .call(d3.axisLeft(y));
+
+  </script>
+</body>
+
+</html>
