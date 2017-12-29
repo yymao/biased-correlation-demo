@@ -14,17 +14,28 @@
     }
 
     .control label {
-      width: 380px;
+      display: block;
+      text-align: left;
+      width: 600px;
+      margin: 5px auto;
+    }
+
+    .control input {
+      vertical-align: middle;
+      margin-left: 10px;
+    }
+
+    .control input[type=range] {
+      width: 150px;
+    }
+
+    .control span {
       display: inline-block;
       text-align: right;
-      margin-bottom: 10px;
+      width: 170px;
     }
 
-    .control label:first-child {
-      width: 240px;
-    }
-
-    .footer{
+    .footer {
       margin-top: 60px;
       font-size: 80%;
     }
@@ -35,33 +46,53 @@
   <div class="page">
     <h3>Demo of Biased Correlation</h3>
     <div class="control">
-      <div>
-        <label>Population Ratio
-          <input type="number" value="0.5" step="0.01" min="0" max="1" id="ratio">
-        </label>
-        <label>Acceptance Cut
-          <input type="number" value="0.9" step="0.01" min="0" max="1" id="cut1">
-          <input type="number" value="0.9" step="0.01" min="0" max="1" id="cut2" disabled="disabled">
-          <input type="checkbox" checked="checked"> Same
-        </label>
-      </div>
-      <div>
-        <label>Bias
-          <input type="number" value="0" step="0.01" min="0" max="1" id="bias">
-        </label>
-        <label>Correlation
-          <input type="number" value="0.95" step="0.01" min="0" max="1" id="r1">
-          <input type="number" value="0.95" step="0.01" min="0" max="1" id="r2" disabled="disabled">
-          <input type="checkbox" checked="checked"> Same
-        </label>
-      </div>
+      <datalist id="tickmarks">
+        <option value="0" label="0"></option>
+        <option value="1" label="1"></option>
+      </datalist>
+      <datalist id="tickmarks2">
+        <option value="0" label="0"></option>
+        <option value="0.5" label="0.5"></option>
+        <option value="1" label="1"></option>
+      </datalist>
+      <datalist id="tickmarks3">
+        <option value="-1" label="-1"></option>
+        <option value="0" label="0"></option>
+        <option value="1" label="1"></option>
+      </datalist>
+      <datalist id="tickmarks4">
+        <option value="0.01" label="0"></option>
+        <option value="1" label="1"></option>
+      </datalist>
+      <label>
+        <span>Population Ratio</span>
+        <input type="range" value="0.5" step="0.01" min="0" max="1" list="tickmarks2" id="ratio">
+      </label>
+      <label>
+        <span>Bias</span>
+        <input type="range" value="0" step="0.01" min="-1" max="1" list="tickmarks3" id="bias">
+      </label>
+      <label>
+        <span>Correlation</span>
+        <input type="range" value="0.95" step="0.01" min="0.01" max="1" list="tickmarks4" id="r1">
+        <input type="range" value="0.95" step="0.01" min="0.01" max="1" list="tickmarks4" id="r2">
+        <input type="checkbox" checked="checked" id="same_r"> Same
+      </label>
+      <label>
+        <span>Acceptance Cut</span>
+        <input type="range" value="0.9" step="0.01" min="0" max="1" list="tickmarks" id="cut1">
+        <input type="range" value="0.9" step="0.01" min="0" max="1" list="tickmarks" id="cut2">
+        <input type="checkbox" checked="checked" id="same_cut"> Same
+      </label>
     </div>
     <div>
       <svg id="canvas"></svg>
     </div>
     <div class="footer">
-      Made by <a href="https://yymao.github.io/">Yao-Yuan Mao</a> with <a href="https://d3js.org/">D3.js</a>.
-      Inspired by my research work, "<a href="https://arxiv.org/abs/1705.03888">Beyond Assembly Bias</a>".
+      Made by
+      <a href="https://yymao.github.io/">Yao-Yuan Mao</a> with
+      <a href="https://d3js.org/">D3.js</a>. Inspired by my research work, "
+      <a href="https://arxiv.org/abs/1705.03888">Beyond Assembly Bias</a>".
     </div>
   </div>
 
@@ -83,6 +114,7 @@
 
     const bias_func = (u, b, invert = false) => {
       if (b == 0) return u;
+      if (b < 0) invert = !invert;
       const a = Math.abs(Math.tan(b * Math.PI / 2.0));
       if (invert) u = 1.0 - u;
       if (a <= 1.0) v = (Math.sqrt(4.0 * a * u + a * a - 2.0 * a + 1.0) + a - 1.0) / 2.0 / a;
@@ -111,7 +143,7 @@
       .domain(x.domain())
       .thresholds(d3.range(hist_nbins).map(i => i / hist_nbins))
 
-    const make_hist = (group) =>
+    const make_hist = (group) => {
       hist(data.filter(d => above_cut(d) && which_group(d) == group).map(d => d.x))
         .forEach((d, i) => {
           let b = bins[i + hist_nbins * group];
@@ -119,16 +151,26 @@
           b.length = d.length / data.length * hist_nbins;
           b.group = group;
         });
+    };
 
-    const bins = [];
-    d3.range(hist_nbins * 2).forEach(() => { bins.push({}) });
+    const update = (this_id, this_value) => {
+      if (this_id !== undefined) {
+        params[this_id] = this_value;
+        let group_name = this_id.substring(0, this_id.length - 1);
+        if (group_name == "r" || group_name == "cut") {
+          if (d3.select("input#same_" + group_name).property("checked")) {
+            let other_id = group_name + (this_id.substr(-1) == "1" ? "2" : "1");
+            d3.select("input#" + other_id).property("value", this_value);
+            params[other_id] = this_value;
+          }
+        }
+      }
 
-    const update = () => {
       data.forEach(calc_y);
       fig.selectAll("circle")
         .attr("cy", d => y(d.y))
         .style("fill", d => which_group(d) ? "darkorange" : "dodgerblue")
-        .style("fill-opacity", d => above_cut(d) ? 0.9 : 0.5);
+        .style("fill-opacity", d => above_cut(d) ? 0.9 : 0.4);
 
       make_hist(true);
       make_hist(false);
@@ -138,7 +180,13 @@
         .style("fill", d => d.group ? "darkorange" : "dodgerblue");
     }
 
-    const params = { "bias": 0, "r1": 0.9, "r2": 0.9, "ratio": 0.5, "cut1": 0.9, "cut2": 0.9 };
+    d3.selectAll("input[type=range]")
+      .on("input", function () { update(this.id, +this.value); });
+
+    const params = {};
+    ["bias", "r1", "r2", "ratio", "cut1", "cut2"].forEach(k => { params[k] = +d3.select("input#" + k).property("value"); });
+    const bins = [];
+    d3.range(hist_nbins * 2).forEach(() => { bins.push({}) });
     const data = create_data();
 
     fig.selectAll("circle")
