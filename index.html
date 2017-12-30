@@ -7,6 +7,10 @@
   <title>Biased Correlation Demo</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/7.0.0/normalize.min.css" type="text/css">
   <style>
+    html {
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
     .page {
       margin: 20px auto;
       max-width: 800px;
@@ -38,6 +42,25 @@
     .footer {
       margin-top: 60px;
       font-size: 80%;
+    }
+
+    circle,
+    .bar {
+      fill: dodgerblue;
+      fill-opacity: 0.5;
+    }
+
+    .ingroup {
+      fill: darkorange;
+    }
+
+    circle.abovecut {
+      fill-opacity: 0.9;
+    }
+
+    .hline {
+      stroke: #555;
+      stroke-width: 1px;
     }
   </style>
 </head>
@@ -91,8 +114,8 @@
     <div class="footer">
       Made by
       <a href="https://yymao.github.io/">Yao-Yuan Mao</a> with
-      <a href="https://d3js.org/">D3.js</a>. Inspired by my research work, "
-      <a href="https://arxiv.org/abs/1705.03888">Beyond Assembly Bias</a>".
+      <a href="https://d3js.org/">D3.js</a>. Inspired by my research work,
+      <a href="https://arxiv.org/abs/1705.03888">"Beyond Assembly Bias"</a>.
     </div>
   </div>
 
@@ -127,7 +150,8 @@
     const above_cut = d => (d.y >= (which_group(d) ? params.cut1 : params.cut2));
     const calc_y = d => { d.y = shuffle_rank(d.x, which_group(d) ? params.r1 : params.r2, bias_func(d.u1, params.bias, which_group(d))); };
 
-    const dims = { "margin": { "top": 20, "right": 20, "bottom": 30, "left": 50 }, "width": 600, "height": 550 };
+
+    const dims = { "margin": { "top": 20, "right": 20, "bottom": 50, "left": 50 }, "width": 600, "height": 550 };
     const fig = d3.select("svg#canvas")
       .attr("width", dims.width + dims.margin.left + dims.margin.right)
       .attr("height", dims.height + dims.margin.top + dims.margin.bottom)
@@ -136,6 +160,7 @@
 
     const x = d3.scaleLinear().range([0, dims.width]).domain([0, 1]);
     const y = d3.scaleLinear().range([dims.height, 0]).domain([0, 1]);
+
 
     const hist_nbins = 30;
     const hist = d3.histogram()
@@ -152,6 +177,7 @@
         });
     };
 
+
     const update = (this_id, this_value) => {
       if (this_id !== undefined) {
         params[this_id] = this_value;
@@ -164,24 +190,33 @@
           }
         }
       }
-      if (this_id === undefined || this_id == 'r1' || this_id == 'r2' || this_id == 'bias'){
+
+      if (this_id === undefined || this_id == 'r1' || this_id == 'r2' || this_id == 'bias') {
         data.forEach(calc_y);
       }
-      fig.selectAll("circle")
+
+      if (this_id === undefined || this_id == 'cut1' || this_id == 'cut2') {
+        hlines
+          .attr("y1", l => y(params["cut" + l]))
+          .attr("y2", l => y(params["cut" + l]));
+      }
+
+      points
         .attr("cy", d => y(d.y))
-        .style("fill", d => which_group(d) ? "darkorange" : "dodgerblue")
-        .style("fill-opacity", d => above_cut(d) ? 0.9 : 0.4);
+        .classed("ingroup", d => which_group(d))
+        .classed("abovecut", d => above_cut(d));
 
       make_hist(true);
       make_hist(false);
-      fig.selectAll(".bar")
+      hist_bars
         .attr("transform", d => "translate(" + x(d.x0) + "," + y(d.length) + ")")
         .attr("height", d => dims.height - y(d.length))
-        .style("fill", d => d.group ? "darkorange" : "dodgerblue");
+        .classed("ingroup", d => d.group);
     }
 
     d3.selectAll("input[type=range]")
       .on("input", function () { update(this.id, +this.value); });
+
 
     const params = {};
     ["bias", "r1", "r2", "ratio", "cut1", "cut2"].forEach(k => { params[k] = +d3.select("input#" + k).property("value"); });
@@ -189,19 +224,25 @@
     d3.range(hist_nbins * 2).forEach(() => { bins.push({}) });
     const data = create_data();
 
-    fig.selectAll("circle")
+    const points = fig.selectAll("circle")
       .data(data)
       .enter().append("circle")
       .attr("r", 3)
       .attr("cx", d => x(d.x));
 
-    fig.selectAll(".bar")
+    const hist_bars = fig.selectAll(".bar")
       .data(bins)
       .enter().append("rect")
       .attr("class", "bar")
       .attr("x", 1)
-      .attr("width", x(1.0 / hist_nbins) - 1)
-      .style("fill-opacity", 0.5);
+      .attr("width", x(1.0 / hist_nbins) - 1);
+
+    const hlines = fig.selectAll(".hline")
+      .data(d3.range(1, 3))
+      .enter().append("line")
+      .attr("class", "hline")
+      .attr("x1", x(0))
+      .attr("x2", x(1));
 
     update();
 
@@ -211,6 +252,21 @@
 
     fig.append("g")
       .call(d3.axisLeft(y));
+
+    fig.append("text")
+      .attr("transform",
+      "translate(" + (dims.width / 2) + " ," +
+      (dims.height + dims.margin.bottom - 10) + ")")
+      .style("text-anchor", "middle")
+      .text("True performance (as ranks)");
+
+    fig.append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", -dims.margin.left)
+      .attr("x", 0 - (dims.height / 2))
+      .attr("dy", "1em")
+      .style("text-anchor", "middle")
+      .text("Evaluated score (as ranks)");
 
   </script>
 </body>
