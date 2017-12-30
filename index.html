@@ -106,7 +106,6 @@
       const _shuffle_rank_f1 = (x, a) => Math.exp(-Math.pow(x / a, 2)) * a / Math.sqrt(Math.PI) + (mathfn.erf(x / a) * x);
       const _shuffle_rank_f2 = (x, a) => { let b = a * Math.sqrt(2.0); return (_shuffle_rank_f1(x, b) - _shuffle_rank_f1(x - 1.0, b) + 1.0) / 2.0; };
       shuffle_rank = (x, r, u) => {
-        if (u == null) u = Math.random();
         const s = _shuffle_rank_f0(r);
         return _shuffle_rank_f2(mathfn.invErf(u * 2.0 - 1.0) * s + x, s);
       };
@@ -165,8 +164,9 @@
           }
         }
       }
-
-      data.forEach(calc_y);
+      if (this_id === undefined || this_id == 'r1' || this_id == 'r2' || this_id == 'bias'){
+        data.forEach(calc_y);
+      }
       fig.selectAll("circle")
         .attr("cy", d => y(d.y))
         .style("fill", d => which_group(d) ? "darkorange" : "dodgerblue")
