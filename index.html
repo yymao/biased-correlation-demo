@@ -56,9 +56,15 @@
     }
 
     circle,
-    .bar {
+    .bar,
+    .median_tick {
       fill: dodgerblue;
       fill-opacity: 0.5;
+    }
+
+    .median_tick {
+      fill-opacity: 0.9;
+      stroke-width: 0;
     }
 
     .ingroup {
@@ -204,7 +210,7 @@
         const group_name = this_id.substring(0, this_id.length - 1);
         if (group_name == "r" || group_name == "cut") {
           if (d3.select("input#same_" + group_name).property("checked")) {
-            let other_id = group_name + (this_id.substr(-1) == "1" ? "2" : "1");
+            const other_id = group_name + (this_id.substr(-1) == "1" ? "2" : "1");
             d3.select("input#" + other_id).property("value", this_value);
             params[other_id] = this_value;
             d3.select("span#value_" + other_id).text(this_value);
@@ -233,6 +239,14 @@
         .attr("transform", d => "translate(" + x(d.x0) + "," + y(d.length) + ")")
         .attr("height", d => dims.height - y(d.length))
         .classed("ingroup", d => d.group);
+
+      const data_cut = data.filter(d => above_cut(d));
+      const median = [
+        d3.median(data_cut.filter(d => which_group(d)), d => d.x),
+        d3.median(data_cut.filter(d => !which_group(d)), d => d.x)
+      ];
+      median_ticks.attr("transform", d => "translate(" + x(median[d]) +")");
+
     }
 
     d3.selectAll("input[type=range]")
@@ -265,11 +279,20 @@
       .attr("width", x(1.0 / hist_nbins) - 1);
 
     const hlines = fig.selectAll(".hline")
-      .data(d3.range(1, 3))
+      .data([1, 2])
       .enter().append("line")
       .attr("class", "hline")
       .attr("x1", x(0))
       .attr("x2", x(1));
+
+    const median_tick_g = fig.append("g")
+      .attr("transform", "translate(0," + dims.height + ")");
+
+    const median_ticks = median_tick_g.selectAll(".median_tick")
+      .data([0, 1])
+      .enter().append("path")
+      .attr("class", d => "median_tick" + (d ? "" : " ingroup"))
+      .attr('d', d3.symbol().type(d3.symbolTriangle).size(52));
 
     update();
 
