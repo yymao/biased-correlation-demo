@@ -20,23 +20,33 @@
     .control label {
       display: block;
       text-align: left;
-      width: 600px;
+      width: 650px;
       margin: 5px auto;
     }
 
     .control input {
       vertical-align: middle;
-      margin-left: 10px;
     }
 
     .control input[type=range] {
-      width: 150px;
+      width: 140px;
     }
 
     .control span {
       display: inline-block;
       text-align: right;
       width: 170px;
+    }
+
+    .control span[id^=value_] {
+      text-align: left;
+      width: 35px;
+    }
+
+    #value_r2,
+    #value_cut2,
+    .control input[type=checkbox] {
+      margin-left: 10px;
     }
 
     .footer {
@@ -70,42 +80,48 @@
   <div class="page">
     <h3>Demo of Biased Correlation</h3>
     <div class="control">
-      <datalist id="tickmarks">
-        <option value="0" label="0"></option>
-        <option value="1" label="1"></option>
-      </datalist>
-      <datalist id="tickmarks2">
-        <option value="0" label="0"></option>
-        <option value="0.5" label="0.5"></option>
-        <option value="1" label="1"></option>
-      </datalist>
-      <datalist id="tickmarks3">
-        <option value="-1" label="-1"></option>
-        <option value="0" label="0"></option>
-        <option value="1" label="1"></option>
-      </datalist>
-      <datalist id="tickmarks4">
-        <option value="0.01" label="0"></option>
-        <option value="1" label="1"></option>
-      </datalist>
       <label>
-        <span>Population Ratio</span>
-        <input type="range" value="0.5" step="0.01" min="0" max="1" list="tickmarks2" id="ratio">
+        <datalist id="ticks_ratio">
+          <option value="0" label="0"></option>
+          <option value="0.5" label="0.5"></option>
+          <option value="1" label="1"></option>
+        </datalist>
+        <span>Population Ratio =</span>
+        <span id="value_ratio"></span>
+        <input type="range" value="0.5" step="0.01" min="0" max="1" list="ticks_ratio" id="ratio">
       </label>
       <label>
-        <span>Bias</span>
-        <input type="range" value="0" step="0.01" min="-1" max="1" list="tickmarks3" id="bias">
+        <datalist id="ticks_bias">
+          <option value="-1" label="-1"></option>
+          <option value="0" label="0"></option>
+          <option value="1" label="1"></option>
+        </datalist>
+        <span>Bias =</span>
+        <span id="value_bias"></span>
+        <input type="range" value="0" step="0.01" min="-1" max="1" list="ticks_bias" id="bias">
       </label>
       <label>
-        <span>Correlation</span>
-        <input type="range" value="0.95" step="0.01" min="0.01" max="1" list="tickmarks4" id="r1">
-        <input type="range" value="0.95" step="0.01" min="0.01" max="1" list="tickmarks4" id="r2">
+        <datalist id="ticks_r">
+          <option value="0.01" label="0"></option>
+          <option value="1" label="1"></option>
+        </datalist>
+        <span>Correlation =</span>
+        <span id="value_r1"></span>
+        <input type="range" value="0.95" step="0.01" min="0.01" max="1" list="ticks_r" id="r1">,
+        <span id="value_r2"></span>
+        <input type="range" value="0.95" step="0.01" min="0.01" max="1" list="ticks_r" id="r2">
         <input type="checkbox" checked="checked" id="same_r"> Same
       </label>
       <label>
-        <span>Acceptance Cut</span>
-        <input type="range" value="0.9" step="0.01" min="0" max="1" list="tickmarks" id="cut1">
-        <input type="range" value="0.9" step="0.01" min="0" max="1" list="tickmarks" id="cut2">
+        <datalist id="ticks_cut">
+          <option value="0" label="0"></option>
+          <option value="1" label="1"></option>
+        </datalist>
+        <span>Acceptance Cut =</span>
+        <span id="value_cut1"></span>
+        <input type="range" value="0.9" step="0.01" min="0" max="1" list="ticks_cut" id="cut1">,
+        <span id="value_cut2"></span>
+        <input type="range" value="0.9" step="0.01" min="0" max="1" list="ticks_cut" id="cut2">
         <input type="checkbox" checked="checked" id="same_cut"> Same
       </label>
     </div>
@@ -115,8 +131,9 @@
     <div class="footer">
       Made by
       <a href="https://yymao.github.io/">Yao-Yuan Mao</a> with
-      <a href="https://d3js.org/">D3.js</a>. Inspired by my research work,
-      <a href="https://arxiv.org/abs/1705.03888">"Beyond Assembly Bias"</a>.<br>
+      <a href="https://d3js.org/">D3.js</a>. Inspired by the research work,
+      <a href="https://arxiv.org/abs/1705.03888">"Beyond Assembly Bias"</a>.
+      <br>
       <a href="https://github.com/yymao/biased-correlation-demo">Visit the GitHub repo</a> to view source code, request features, and report bugs.
     </div>
   </div>
@@ -147,7 +164,7 @@
       return invert ? 1.0 - v : v;
     };
 
-    const create_data = (n = 2000) => d3.range(n).map(i => ({ "x": (i + 0.5) / n, "u1": Math.random(), "u2": Math.random() }));
+    const create_data = (n = 3000) => d3.range(n).map(i => ({ "x": (i + 0.5) / n, "u1": Math.random(), "u2": Math.random() }));
     const which_group = d => (d.u2 >= params.ratio);
     const above_cut = d => (d.y >= (which_group(d) ? params.cut1 : params.cut2));
     const calc_y = d => { d.y = shuffle_rank(d.x, which_group(d) ? params.r1 : params.r2, bias_func(d.u1, params.bias, which_group(d))); };
@@ -183,12 +200,14 @@
     const update = (this_id, this_value) => {
       if (this_id !== undefined) {
         params[this_id] = this_value;
-        let group_name = this_id.substring(0, this_id.length - 1);
+        d3.select("span#value_" + this_id).text(this_value);
+        const group_name = this_id.substring(0, this_id.length - 1);
         if (group_name == "r" || group_name == "cut") {
           if (d3.select("input#same_" + group_name).property("checked")) {
             let other_id = group_name + (this_id.substr(-1) == "1" ? "2" : "1");
             d3.select("input#" + other_id).property("value", this_value);
             params[other_id] = this_value;
+            d3.select("span#value_" + other_id).text(this_value);
           }
         }
       }
@@ -220,8 +239,14 @@
       .on("input", function () { update(this.id, +this.value); });
 
 
+    const params_keys = ["bias", "r1", "r2", "ratio", "cut1", "cut2"];
     const params = {};
-    ["bias", "r1", "r2", "ratio", "cut1", "cut2"].forEach(k => { params[k] = +d3.select("input#" + k).property("value"); });
+    params_keys.forEach(k => {
+      const v = +d3.select("input#" + k).property("value");
+      params[k] = v;
+      d3.select("span#value_" + k).text(v);
+    });
+
     const bins = [];
     d3.range(hist_nbins * 2).forEach(() => { bins.push({}) });
     const data = create_data();
